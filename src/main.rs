@@ -1,9 +1,16 @@
-use std::{collections::HashMap, fs::File, io::{Read, Write}, path::Path};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{Read, Write},
+    path::Path,
+};
 
 use clap::{App, Arg};
 use data::block::Block;
 
-use crate::data::{player_pos::PlayerPos, powerup::Powerup, poweruptype::PowerupType, scheme::Scheme, team::Team};
+use crate::data::{
+    player_pos::PlayerPos, powerup::Powerup, poweruptype::PowerupType, scheme::Scheme, team::Team,
+};
 
 mod data;
 use serde_json;
@@ -80,9 +87,9 @@ fn main() {
 
     let grid = generate_grid(&scheme_lines);
 
-    let start_positions: Vec<PlayerPos> = build_player_positions(&scheme_lines);
+    let start_positions: Vec<PlayerPos> = build_start_positions(&scheme_lines);
 
-    let powerups: HashMap<PowerupType, Powerup> = HashMap::new();
+    let powerups: HashMap<PowerupType, Powerup> = generate_powerups(scheme_lines);
 
     let scheme = Scheme::new(
         name,
@@ -90,7 +97,7 @@ fn main() {
         brick_density,
         grid,
         start_positions,
-        powerups
+        powerups,
     );
 
     let scheme_json = serde_json::to_string(&scheme).expect("Serialisation failed!!!");
@@ -100,7 +107,6 @@ fn main() {
 
     let path = Path::new(output_path);
     let display = path.display();
-
 
     let mut output_file = match File::create(&path) {
         Err(why) => panic!("couldn't create {}: {}", display, why),
@@ -113,16 +119,49 @@ fn main() {
     }
 }
 
-fn build_player_positions(scheme_lines: &Vec<(&str, &str)>) -> Vec<PlayerPos> {
+fn generate_powerups(scheme_lines: Vec<(&str, &str)>) -> HashMap<PowerupType, Powerup> {
     scheme_lines
-    .iter()
-    .filter(|(pre, _)| *pre == "-S")
-    .map(|line| line.1.split(',').filter_map(|string| string.parse::<usize>().ok()))
-    .map(|mut parts| {
-        let pos = (parts.nth(1).unwrap_or_default(), parts.next().unwrap_or_default());
-        let team = Team::new(parts.next().unwrap_or_default());
-        PlayerPos::new(pos, team)
-    }).collect()
+        .iter()
+        .filter(|(pre, _)| *pre == "-P")
+        .map(|line| {
+            line.1.split(',').filter_map(|mut string| {
+                string = string.trim();
+                string.parse::<usize>().ok()
+            })
+        })
+        .map(|mut parts| {
+            let powerup_type = PowerupType::new(parts.next().unwrap_or_default());
+            let bornwith = parts.next().unwrap_or_default() == 1;
+            let has_override = parts.next().unwrap_or_default() == 1;
+            let override_value = parts.next().unwrap_or_default();
+            let forbidden = parts.next().unwrap_or_default() == 1;
+            (
+                powerup_type,
+                Powerup::new(bornwith, has_override, override_value, forbidden),
+            )
+        })
+        .collect()
+}
+
+fn build_start_positions(scheme_lines: &Vec<(&str, &str)>) -> Vec<PlayerPos> {
+    scheme_lines
+        .iter()
+        .filter(|(pre, _)| *pre == "-S")
+        .map(|line| {
+            line.1.split(',').filter_map(|mut string| {
+                string = string.trim();
+                string.parse::<usize>().ok()
+            })
+        })
+        .map(|mut parts| {
+            let pos = (
+                parts.nth(1).unwrap_or_default(),
+                parts.next().unwrap_or_default(),
+            );
+            let team = Team::new(parts.next().unwrap_or_default());
+            PlayerPos::new(pos, team)
+        })
+        .collect()
 }
 
 fn generate_grid(scheme_lines: &Vec<(&str, &str)>) -> Vec<Vec<Block>> {
