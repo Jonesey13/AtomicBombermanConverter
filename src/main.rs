@@ -22,8 +22,6 @@ fn main() {
         .about("Converts Atomic Bomberman Schema File to JSON")
         .arg(
             Arg::with_name("Scheme")
-                .long("scheme-file")
-                .short("s")
                 .required(true)
                 .value_name("FILE")
                 .help("Location of the schema file")
@@ -34,15 +32,14 @@ fn main() {
                 .long("output")
                 .short("o")
                 .help("The Json Output File Name")
-                .required(true)
                 .value_name("FILE"),
         )
         .get_matches();
 
-    let scheme = matches.value_of("Scheme").unwrap();
-    println!("Value for Scheme: {}", scheme);
+    let scheme_path = matches.value_of("Scheme").unwrap();
+    println!("Value for Scheme: {}", scheme_path);
 
-    let path = Path::new(scheme);
+    let path = Path::new(scheme_path);
     let display = path.display();
 
     let mut file = match File::open(&path) {
@@ -101,8 +98,13 @@ fn main() {
     );
 
     let scheme_json = serde_json::to_string(&scheme).expect("Serialisation failed!!!");
+    let default_scheme_path = &scheme_path
+        .replace(".SCH", ".json")
+        .replace(".sch", ".json");
 
-    let output_path = matches.value_of("Json Output").unwrap();
+    let output_path = matches
+        .value_of("Json Output")
+        .unwrap_or(default_scheme_path);
     println!("Value for Output File: {}", output_path);
 
     let path = Path::new(output_path);
