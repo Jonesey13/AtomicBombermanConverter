@@ -21,59 +21,60 @@ fn main() {
         .author("Alexander Jones <adjonesey13@gmail.com>")
         .about("Converts Atomic Bomberman Schema File to JSON")
         .arg(
-            Arg::with_name("Scheme")
+            Arg::with_name("Schemes")
                 .required(true)
                 .value_name("FILE")
-                .help("Location of the schema file")
+                .help("Location of the schema files")
+                .multiple(true)
                 .takes_value(true),
         )
         .arg(
             Arg::with_name("Json Output")
                 .long("output")
                 .short("o")
-                .help("The Json Output File Name")
+                .help("The Json Output File Name (single scheme only)")
                 .value_name("FILE"),
         )
         .get_matches();
 
-    let scheme_path = matches.value_of("Scheme").unwrap();
-    println!("Value for Scheme: {}", scheme_path);
+    let scheme_paths: Vec<&str> = matches.values_of("Schemes").unwrap().collect();
 
+    for scheme_path in scheme_paths {
+        process_scheme(scheme_path, &matches);
+    }
+}
+
+fn process_scheme(scheme_path: &str, matches: &clap::ArgMatches) {
+    println!("Value for Scheme: {}", scheme_path);
     let path = Path::new(scheme_path);
     let display = path.display();
-
     let mut file = match File::open(&path) {
         Err(why) => panic!("couldn't open {}: {}", display, why),
         Ok(file) => file,
     };
-
     let mut scheme_string = String::new();
     match file.read_to_string(&mut scheme_string) {
         Err(why) => panic!("couldn't read {}: {}", display, why),
         Ok(_) => print!("{} contains:\n{}", display, scheme_string),
     }
-
     let scheme_lines: Vec<(&str, &str)> = scheme_string
         .split("\r\n")
         .filter(|line| line.chars().next() == Some('-'))
         .filter_map(|line| line.split_once(','))
         .collect();
     print!("{} contains key lines:\n{:?}", display, scheme_lines);
-
     let version = scheme_lines
         .iter()
         .find(|(pre, _)| *pre == "-V")
         .expect("No Version!")
         .1
         .to_string();
-
     let name = scheme_lines
         .iter()
         .find(|(pre, _)| *pre == "-N")
         .expect("No Name!")
         .1
         .to_string();
-
     let brick_density = scheme_lines
         .iter()
         .find(|(pre, _)| *pre == "-B")
@@ -81,13 +82,9 @@ fn main() {
         .1
         .parse::<usize>()
         .unwrap_or_default();
-
     let grid = generate_grid(&scheme_lines);
-
     let start_positions: Vec<PlayerPos> = build_start_positions(&scheme_lines);
-
     let powerups: HashMap<PowerupType, Powerup> = generate_powerups(scheme_lines);
-
     let scheme = Scheme::new(
         name,
         version,
@@ -96,25 +93,20 @@ fn main() {
         start_positions,
         powerups,
     );
-
     let scheme_json = serde_json::to_string(&scheme).expect("Serialisation failed!!!");
     let default_scheme_path = &scheme_path
         .replace(".SCH", ".json")
         .replace(".sch", ".json");
-
     let output_path = matches
         .value_of("Json Output")
         .unwrap_or(default_scheme_path);
     println!("Value for Output File: {}", output_path);
-
     let path = Path::new(output_path);
     let display = path.display();
-
     let mut output_file = match File::create(&path) {
         Err(why) => panic!("couldn't create {}: {}", display, why),
         Ok(file) => file,
     };
-
     match output_file.write_all(scheme_json.as_bytes()) {
         Err(why) => panic!("couldn't write to {}: {}", display, why),
         Ok(_) => println!("successfully wrote to {}", display),
