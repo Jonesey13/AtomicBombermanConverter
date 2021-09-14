@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use super::poweruptype::PowerupType;
-
 #[derive(Serialize, Deserialize)]
 pub struct Powerup {
-    bornwith: bool,
+    bornwith: usize,
     has_override: bool,
     override_value: usize,
     forbidden: bool,
@@ -12,7 +10,7 @@ pub struct Powerup {
 
 impl Powerup {
     pub fn new(
-        bornwith: bool,
+        bornwith: usize,
         has_override: bool,
         override_value: usize,
         forbidden: bool,

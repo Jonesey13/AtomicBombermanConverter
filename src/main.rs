@@ -125,7 +125,7 @@ fn generate_powerups(scheme_lines: Vec<(&str, &str)>) -> HashMap<PowerupType, Po
         })
         .map(|mut parts| {
             let powerup_type = PowerupType::new(parts.next().unwrap_or_default());
-            let bornwith = parts.next().unwrap_or_default() == 1;
+            let bornwith = parts.next().unwrap_or_default();
             let has_override = parts.next().unwrap_or_default() == 1;
             let override_value = parts.next().unwrap_or_default();
             let forbidden = parts.next().unwrap_or_default() == 1;
